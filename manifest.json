@@ -1,0 +1,13 @@
+{
+    "domain": "fermax_duoxme",
+    "name": "FERMAX DuoxMe",
+    "config_flow": true,
+    "documentation": "https://github.com/edualm/ha-fermax-duoxme",
+    "issue_tracker": "https://github.com/edualm/ha-fermax-duoxme/issues",
+    "codeowners": ["@edualm"],
+    "iot_class": "push",
+    "version": "2.0.0",
+    "dependencies": ["http"],
+    "requirements": ["rustPlusPushReceiver==0.6.1"]
+  }
+  
