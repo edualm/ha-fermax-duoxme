@@ -24,6 +24,9 @@ CONF_FCM_GCM_SENDER_ID: Final = "fcm_gcm_sender_id"
 CONF_FCM_GMS_APP_ID: Final = "fcm_gms_app_id"
 CONF_FCM_ANDROID_PACKAGE_NAME: Final = "fcm_android_package_name"
 
+# Options
+CONF_ENABLE_PUSH_NOTIFICATIONS: Final = "enable_push_notifications"
+
 # Internal Token Storage
 CONF_ACCESS_TOKEN: Final = "access_token"
 CONF_REFRESH_TOKEN: Final = "refresh_token"
@@ -44,8 +47,11 @@ API_ACK_URL: Final = f"{FERMAX_BASE_URL}/callmanager/api/v1/message/ack"
 # --- Signals for Dispatcher ---
 SIGNAL_NOTIFICATION_RECEIVED: Final = f"{DOMAIN}_notification_received"
 SIGNAL_LISTENER_READY: Final = f"{DOMAIN}_listener_ready"
+SIGNAL_CALL_INITIATED_WITH_IMAGE: Final = f"{DOMAIN}_call_initiated_with_image"
 
 # --- Notification Constants ---
 NOTIFICATION_TYPE_KEY: Final = "FermaxNotificationType"
 NOTIFICATION_TYPE_CALL: Final = "Call"
 NOTIFICATION_PHOTO_ID_KEY: Final = "photoId"
+NOTIFICATION_ROOM_ID_KEY: Final = "RoomId"
+NOTIFICATION_SOCKET_URL_KEY: Final = "SocketUrl"

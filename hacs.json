@@ -1,6 +1,5 @@
 {
   "name": "FERMAX DuoxMe",
-  "content_in_root": true,
   "homeassistant": "2025.6.0",
   "country": ["ES", "PT"]
 }

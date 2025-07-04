@@ -13,7 +13,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     DOMAIN,
-    INTEGRATION_NAME,
     CONF_CLIENT_ID,
     CONF_CLIENT_SECRET,
     CONF_FCM_API_KEY,
@@ -63,7 +62,6 @@ class FermaxDuoxmeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self.fermax_data = user_input
                 return await self.async_step_fcm()
 
-        # Show the form with a descriptive title and introduction
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
@@ -75,11 +73,6 @@ class FermaxDuoxmeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
-            description_placeholders={
-                "title": "FERMAX Connection Credentials",
-                "introduction": "Please enter the credentials for your FERMAX DuoxMe account, along with the client ID and secret of the mobile app.",
-                "docs_link": "https://github.com/edualm/ha-fermax-duoxme#configuration"
-            }
         )
 
     async def async_step_fcm(
@@ -97,7 +90,6 @@ class FermaxDuoxmeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 title=config_data[CONF_USERNAME], data=config_data
             )
 
-        # Show the form with a descriptive title and a link to documentation
         return self.async_show_form(
             step_id="fcm",
             data_schema=vol.Schema(
@@ -109,9 +101,4 @@ class FermaxDuoxmeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_FCM_ANDROID_PACKAGE_NAME): str,
                 }
             ),
-            description_placeholders={
-                "title": "Push Notification Credentials (FCM)",
-                "introduction": "Enter the Google Firebase Cloud Messaging (FCM) credentials. These are required to receive real-time notifications from your doorbell, and a core part of this integration.",
-                "docs_link": "https://github.com/edualm/ha-fermax-duoxme#configuration"
-            }
         )

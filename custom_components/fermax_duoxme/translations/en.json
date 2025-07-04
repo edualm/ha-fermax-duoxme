@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FERMAX Connection Credentials",
+        "description": "Enter your FERMAX DuoxMe account credentials and the OAuth details from the mobile app. For more details on how to obtain these, please see the [documentation]({docs_link}).",
+        "data": {
+          "username": "Username (Email)",
+          "password": "Password",
+          "client_id": "Client ID",
+          "client_secret": "Client Secret"
+        }
+      },
+      "fcm": {
+        "title": "Push Notification Credentials (FCM)",
+        "description": "Enter the Google Firebase Cloud Messaging (FCM) credentials. These are required to receive real-time notifications from your doorbell, and a core part of this integration. For a detailed guide, see the [documentation]({docs_link}).",
+        "data": {
+          "fcm_api_key": "FCM API Key",
+          "fcm_project_id": "FCM Project ID",
+          "fcm_gcm_sender_id": "FCM GCM Sender ID",
+          "fcm_gms_app_id": "FCM GMS App ID",
+          "fcm_android_package_name": "FCM Android Package Name"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username, password, or client credentials. Please check and try again.",
+      "unknown": "An unknown error occurred. Please check the logs for more details."
+    },
+    "abort": {
+      "already_configured": "This Fermax account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FERMAX DuoxMe Options",
+        "data": {
+          "enable_push_notifications": "Enable Doorbell Notifications"
+        },
+        "description": "Enable this to listen for real-time events from FERMAX's servers. This provides instant ring notifications with live snapshots from your doorbell. If disabled, only the door lock entity will be available."
+      }
+    }
+  }
+}

@@ -66,6 +66,14 @@ This integration requires a set of push notification credentials to listen for e
 
 After entering all the credentials, the integration will be set up and your entities will be created.
 
+### Integration Options
+
+After setting up the integration, you can change its behavior by going to the integration's card on the **Devices & Services** page and clicking **Configure**.
+
+* **Enable Doorbell Notifications**:
+    * **Enabled (Default):** This is the full-featured mode. The integration will listen for real-time events from FERMAX's servers, providing instant ring notifications, live snapshots via the camera, and the door lock.
+    * **Disabled:** This is a "lock-only" mode. The integration will not listen for push notifications. The camera and ring sensor entities will not be created. This is useful if you only want the ability to open the door and prefer a simpler setup without the push notification dependencies.
+
 ## Usage
 
 Once configured, the integration will create the following entities:
@@ -108,11 +116,6 @@ homekit:
       linked_doorbell_sensor: binary_sensor.fermax_duoxme_ring
       support_audio: false
 ```
-
-## Quirks
-
-* This is still being actively developed, so expect bugs and issues.
-* Since we don't get a still image of the camera when someone rings the doorbell, the image is temporarily updated to `call_image.jpg` until we are able to acquire the latest snapshot again. As of now, the included `call_image.jpg` file was AI-generated.
 
 ## Troubleshooting
 
