@@ -1,6 +1,5 @@
 """Binary sensor platform for FERMAX DuoxMe."""
 import logging
-import json
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -14,9 +13,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     DOMAIN,
     INTEGRATION_NAME,
-    SIGNAL_NOTIFICATION_RECEIVED,
-    NOTIFICATION_TYPE_KEY,
     NOTIFICATION_TYPE_CALL,
+    NOTIFICATION_TYPE_KEY,
+    SIGNAL_CALL_INITIATED_WITH_IMAGE,
+    SIGNAL_NOTIFICATION_RECEIVED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,29 +49,31 @@ class FermaxCallSensor(BinarySensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register for dispatcher calls."""
+        # This listener turns the sensor ON, but only after the camera has a live image.
         self.async_on_remove(
             async_dispatcher_connect(
-                self.hass, SIGNAL_NOTIFICATION_RECEIVED, self._handle_notification
+                self.hass, SIGNAL_CALL_INITIATED_WITH_IMAGE, self._turn_on
+            )
+        )
+        # This listener turns the sensor OFF for any non-call notification.
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, SIGNAL_NOTIFICATION_RECEIVED, self._handle_end_call
             )
         )
 
     @callback
-    def _handle_notification(self, notification: dict) -> None:
-        """Handle an incoming notification."""
-        _LOGGER.debug("Binary sensor received notification: %s", notification)
-        
-        try:
-            # The notification data is already a dictionary.
-            notification_type = notification.get(NOTIFICATION_TYPE_KEY)
+    def _turn_on(self) -> None:
+        """Turn the sensor on."""
+        _LOGGER.info("Ring sensor turned ON.")
+        self._attr_is_on = True
+        self.async_write_ha_state()
 
-            if notification_type == NOTIFICATION_TYPE_CALL:
-                self._attr_is_on = True
-                _LOGGER.info("Ring sensor turned ON.")
-            else:
-                self._attr_is_on = False
-                _LOGGER.info("Ring sensor turned OFF.")
-            
+    @callback
+    def _handle_end_call(self, notification: dict) -> None:
+        """Turn the sensor off if it's not a call notification."""
+        notification_type = notification.get(NOTIFICATION_TYPE_KEY)
+        if notification_type != NOTIFICATION_TYPE_CALL:
+            _LOGGER.info("Ring sensor turned OFF.")
+            self._attr_is_on = False
             self.async_write_ha_state()
-
-        except Exception:
-            _LOGGER.exception("Error handling notification in binary sensor.")

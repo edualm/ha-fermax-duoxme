@@ -15,7 +15,6 @@ from push_receiver.android_fcm_register import AndroidFCM
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 
@@ -58,7 +57,7 @@ class FermaxPushListener:
         self._processed_ids: Set[str] = set()
         self._device_id: Optional[str] = None
         self._listener_thread: Optional[Thread] = None
-        self._receiver: Optional[PushReceiver] = None  # Store a reference to the receiver
+        self._receiver: Optional[PushReceiver] = None
         self.pairings: List[Dict[str, Any]] = []
         self.ready_event = asyncio.Event()
 
@@ -183,7 +182,6 @@ class FermaxPushListener:
             future = asyncio.run_coroutine_threadsafe(self._async_listener_setup(), self.hass.loop)
             future.result()
 
-            # Store the receiver as an instance variable to prevent garbage collection
             self._receiver = PushReceiver(self._fcm_credentials, list(self._processed_ids))
             _LOGGER.info("Listening for incoming notifications...")
             self._receiver.listen(self._on_notification)
