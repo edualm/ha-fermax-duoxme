@@ -60,7 +60,7 @@ This integration requires a set of push notification credentials to listen for e
 
 * **FCM API Key:** Firebase project's API Key.
 * **FCM Project ID:** Firebase Project ID.
-* **FCM GCM Sender ID:** oGogle Cloud Messaging Sender ID.
+* **FCM GCM Sender ID:** Google Cloud Messaging Sender ID.
 * **FCM GMS App ID:** Google Mobile Services App ID.
 * **FCM Android Package Name:** The package name for the Android app.
 
