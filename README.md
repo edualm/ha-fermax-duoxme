@@ -2,6 +2,9 @@
 
 This is a custom integration for Home Assistant that connects to the FERMAX DuoxMe video doorbell system. It uses a push-based notification system to provide real-time updates from your doorbell, including incoming calls, and allows you to open your door directly from Home Assistant.
 
+> [!WARNING]
+> Push notifications are not stable, since the integration appears to lose connection with Google's servers. I haven't been able to figure out why yet. Consider using lock-only mode for now (check the [Integration Options](#integration-options) section for how to toggle it).
+
 ## Features
 
 * **Camera:** A feed that displays a "call" image when someone is ringing and updates to the latest snapshot otherwise.
