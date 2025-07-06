@@ -120,6 +120,13 @@ class FermaxPushListener:
                 _LOGGER.error("Failed to refresh token: %s. Re-authenticating.", e)
                 await self._authenticate_with_password()
 
+    async def async_fetch_pairings(self):
+        """Ensures auth and fetches pairings for lock-only mode."""
+        _LOGGER.debug("Fetching pairings for lock-only mode.")
+        await self._ensure_valid_token()
+        self.pairings = await self._api.async_get_pairings(self._oauth_token[CONF_ACCESS_TOKEN]) or []
+        self.ready_event.set() # Signal that pairings are ready
+
     async def _register_fcm_token(self, active: bool):
         """Registers or de-registers the FCM token with the Fermax server."""
         await self._ensure_valid_token()
