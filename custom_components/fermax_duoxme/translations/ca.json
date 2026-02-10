@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Credencials de connexió FERMAX",
+        "description": "Introdueix les credencials del teu compte FERMAX DuoxMe i els detalls OAuth de l'aplicació mòbil. Per a més detalls sobre com obtenir-los, consulta la [documentació]({docs_link}).",
+        "data": {
+          "username": "Nom d'usuari (Email)",
+          "password": "Contrasenya",
+          "client_id": "ID de client (Client ID)",
+          "client_secret": "Secret de client (Client Secret)"
+        }
+      },
+      "fcm": {
+        "title": "Credencials de notificacions Push (FCM)",
+        "description": "Introdueix les credencials de Google Firebase Cloud Messaging (FCM). Són necessàries per rebre notificacions en temps real del teu videoporter i són una part fonamental d'aquesta integració. Per a una guia detallada, consulta la [documentació]({docs_link}).",
+        "data": {
+          "fcm_api_key": "Clau API de FCM",
+          "fcm_project_id": "ID del projecte FCM",
+          "fcm_gcm_sender_id": "ID del remitent GCM de FCM",
+          "fcm_gms_app_id": "ID de l'aplicació GMS de FCM",
+          "fcm_android_package_name": "Nom del paquet Android de FCM"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "L'usuari, la contrasenya o les credencials de client no són vàlids. Si us plau, revisa-ho i torna-ho a intentar.",
+      "unknown": "S'ha produït un error desconegut. Si us plau, revisa els registres (logs) per a més detalls."
+    },
+    "abort": {
+      "already_configured": "Aquest compte de Fermax ja està configurat."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcions de FERMAX DuoxMe",
+        "data": {
+          "enable_push_notifications": "Habilitar notificacions del timbre"
+        },
+        "description": "Habilita aquesta opció per escoltar esdeveniments en temps real des dels servidors de FERMAX. Això proporciona notificacions de trucada instantànies amb captures en directe del teu videoporter. Si es deshabilita, només estarà disponible l'entitat del pany."
+      }
+    }
+  }
+}
