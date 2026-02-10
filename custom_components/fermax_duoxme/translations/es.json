@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Credenciales de conexión FERMAX",
+        "description": "Introduce las credenciales de tu cuenta FERMAX DuoxMe y los detalles OAuth de la aplicación móvil. Para más detalles sobre cómo obtenerlos, consulta la [documentación]({docs_link}).",
+        "data": {
+          "username": "Nombre de usuario (Email)",
+          "password": "Contraseña",
+          "client_id": "ID de Cliente (Client ID)",
+          "client_secret": "Secreto de Cliente (Client Secret)"
+        }
+      },
+      "fcm": {
+        "title": "Credenciales de Notificaciones Push (FCM)",
+        "description": "Introduce las credenciales de Google Firebase Cloud Messaging (FCM). Estas son necesarias para recibir notificaciones en tiempo real desde tu videoportero y son una parte fundamental de esta integración. Para una guía detallada, consulta la [documentación]({docs_link}).",
+        "data": {
+          "fcm_api_key": "Clave API de FCM",
+          "fcm_project_id": "ID del Proyecto FCM",
+          "fcm_gcm_sender_id": "ID del Remitente GCM de FCM",
+          "fcm_gms_app_id": "ID de Aplicación GMS de FCM",
+          "fcm_android_package_name": "Nombre del Paquete Android de FCM"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Usuario, contraseña o credenciales de cliente no válidos. Por favor, revisa e inténtalo de nuevo.",
+      "unknown": "Ha ocurrido un error desconocido. Por favor, revisa los registros (logs) para más detalles."
+    },
+    "abort": {
+      "already_configured": "Esta cuenta de Fermax ya está configurada."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones de FERMAX DuoxMe",
+        "data": {
+          "enable_push_notifications": "Habilitar notificaciones del timbre"
+        },
+        "description": "Habilita esta opción para escuchar eventos en tiempo real desde los servidores de FERMAX. Esto proporciona notificaciones instantáneas de llamada con capturas en vivo de tu videoportero. Si se deshabilita, solo estará disponible la entidad de la cerradura."
+      }
+    }
+  }
+}
