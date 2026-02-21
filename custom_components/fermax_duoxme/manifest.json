@@ -6,7 +6,7 @@
     "issue_tracker": "https://github.com/edualm/ha-fermax-duoxme/issues",
     "codeowners": ["@edualm"],
     "iot_class": "push",
-    "version": "3.0.2",
+    "version": "3.0.3",
     "dependencies": ["http"],
     "requirements": [
       "aiohttp",
