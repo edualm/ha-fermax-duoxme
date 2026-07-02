@@ -125,6 +125,7 @@ homekit:
 * **PERMISSION_DENIED Error During Setup**: This error means your FCM API Key is incorrect or lacks the necessary permissions. In your Google Cloud project, ensure the key has the firebaseinstallations.installations.create permission enabled.
 * **No Notifications**: If the integration sets up but you don't receive any updates, double-check all your FCM credentials. Also, check the Home Assistant logs for any errors from the custom_components.fermax_duoxme.push component.
 * **Camera Feed is Blank**: This can happen if the integration fails to fetch the initial image. Try restarting Home Assistant. If the problem persists, check the logs for errors related to the FERMAX API.
+* **Live WebRTC Snapshot is Unavailable**: Live image capture during an incoming call depends on the optional `aiortc` package. The integration attempts to install/use it only when WebRTC capture is needed. If `aiortc` is missing or incompatible with your Home Assistant version, the integration falls back to the latest snapshot from the FERMAX API instead of failing setup.
 
 ## Contributing
 

@@ -8,10 +8,12 @@ from aiohttp import web
 from homeassistant.components.camera import Camera, CameraEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.helpers.network import get_url
+from homeassistant.requirements import async_process_requirements
 
 from .api import FermaxApi
 from .const import (
@@ -27,7 +29,6 @@ from .const import (
     SIGNAL_NOTIFICATION_RECEIVED,
 )
 from .push import FermaxPushListener
-from .webrtc import async_get_webrtc_frame
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ class FermaxDoorbellCamera(Camera):
         self.entry = entry
         self._api: Optional[FermaxApi] = None
         self._image: Optional[bytes] = None
+        self._webrtc_available: Optional[bool] = None
         self._attr_unique_id = f"{entry.entry_id}_camera"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
@@ -110,7 +112,9 @@ class FermaxDoorbellCamera(Camera):
 
     async def _handle_incoming_call(self, notification: dict):
         """Fetch a live image via WebRTC and then trigger the ring sensor."""
-        _LOGGER.info("Incoming call detected. Attempting to capture live image via WebRTC.")
+        _LOGGER.info(
+            "Incoming call detected. Attempting to capture live image via WebRTC."
+        )
         
         room_id = notification.get(NOTIFICATION_ROOM_ID_KEY)
         socket_url = notification.get(NOTIFICATION_SOCKET_URL_KEY)
@@ -123,7 +127,25 @@ class FermaxDoorbellCamera(Camera):
             _LOGGER.error("Missing required data for WebRTC call.")
             return
 
-        image_bytes = await async_get_webrtc_frame(room_id, socket_url, auth_token, app_token)
+        image_bytes = None
+        try:
+            if self._webrtc_available is not False:
+                if self._webrtc_available is None:
+                    await async_process_requirements(self.hass, DOMAIN, ["aiortc"])
+                from .webrtc import async_get_webrtc_frame
+
+                self._webrtc_available = True
+        except (HomeAssistantError, ImportError) as err:
+            self._webrtc_available = False
+            _LOGGER.warning(
+                "Live WebRTC frame capture is unavailable; falling back to latest snapshot: %s",
+                err,
+            )
+
+        if self._webrtc_available:
+            image_bytes = await async_get_webrtc_frame(
+                room_id, socket_url, auth_token, app_token
+            )
         
         if image_bytes:
             self._image = image_bytes
@@ -132,7 +154,10 @@ class FermaxDoorbellCamera(Camera):
             # Now that the image is set, signal the binary_sensor to turn on.
             async_dispatcher_send(self.hass, SIGNAL_CALL_INITIATED_WITH_IMAGE)
         else:
-            _LOGGER.warning("Failed to capture live image. Falling back to latest snapshot.")
+            if self._webrtc_available is not False:
+                _LOGGER.warning(
+                    "Failed to capture live image. Falling back to latest snapshot."
+                )
             await self._fetch_latest_image()
             # Still fire the signal so the user is notified of the call.
             async_dispatcher_send(self.hass, SIGNAL_CALL_INITIATED_WITH_IMAGE)
