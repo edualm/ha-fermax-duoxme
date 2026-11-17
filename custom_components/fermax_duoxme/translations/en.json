@@ -22,6 +22,14 @@
           "fcm_android_package_name": "FCM Android Package Name"
         }
       },
+      "reconfigure": {
+        "title": "Reconfigure FERMAX credentials",
+        "description": "Enter the FERMAX username and password to use. OAuth and FCM settings and integration options will be kept. The credentials are validated before the integration is reloaded.",
+        "data": {
+          "username": "Username (Email)",
+          "password": "Password"
+        }
+      },
       "reauth_confirm": {
         "title": "Re-authenticate FERMAX",
         "description": "FERMAX rejected the saved credentials for {username}. Enter the current password.",
@@ -32,11 +40,14 @@
     },
     "error": {
       "invalid_auth": "Invalid username, password, or client credentials. Please check and try again.",
+      "cannot_connect": "Could not connect to FERMAX to validate the credentials. Please try again.",
+      "cannot_update": "Could not stop the current session or clear its token. Credentials were not changed. Check the logs and try again.",
       "unknown": "An unknown error occurred. Please check the logs for more details."
     },
     "abort": {
       "already_configured": "This Fermax account is already configured.",
-      "reauth_successful": "Re-authentication was successful."
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Credentials updated. The integration will reload."
     }
   },
   "options": {

@@ -26,7 +26,7 @@ This is a custom integration for Home Assistant that connects to the FERMAX Duox
 | Image capture | Live snapshot is optional and disabled by default. Choose go2rtc or aiortc; failed live capture falls back to the FERMAX photo API. |
 | Camera access | Uses Home Assistant's camera endpoints. There is no separate unauthenticated custom MJPEG endpoint, and native live video streaming is not advertised. |
 | Push recovery | Reconnects with exponential back-off from 5 seconds to 5 minutes, stops the listener on unload, and correctly unloads platforms when switching to lock-only mode. |
-| Authentication | Refreshes access tokens with a 60-second margin, serializes concurrent refreshes, and supports Home Assistant's re-authentication flow. |
+| Authentication | Refreshes access tokens with a 60-second margin, serializes concurrent refreshes, and supports password re-authentication and manual username/password reconfiguration. |
 | Setup failures | Transient connection failures are retried. Rejected credentials and FCM registration errors are surfaced rather than leaving setup waiting indefinitely. |
 | API compatibility | Uses Pairings v4 and FCM registration v2, including Firebase Installation IDs for registration/removal and Android app metadata. |
 | Notification handling | Suppresses recently processed duplicate notifications using a bounded, persisted history of 100 IDs. Unrelated notifications do not clear the ring sensor. |
@@ -105,6 +105,16 @@ This integration requires a set of push notification credentials to listen for e
 * **FCM Android Package Name:** The package name for the Android app.
 
 After entering all the credentials, the integration will be set up and your entities will be created.
+
+### Changing the Username or Password
+
+Go to **Settings > Devices & Services > FERMAX DuoxMe**, open the menu for the configuration entry, and select **Reconfigure**. You can enter a username and password without deleting and re-adding the integration.
+
+The new login is validated before any saved credentials change. On success, the old session is unloaded, its cached OAuth token is removed, and the existing entry is updated and reloaded with the new login. OAuth client credentials, FCM configuration, integration options, and the entry ID are retained. The password field is not prefilled.
+
+An account already configured in another entry cannot be selected. If you switch to a different FERMAX account, its available doors may differ, so review door entities and related automations after the reload. Invalid credentials or a failed validation leave the saved configuration unchanged.
+
+Automatic re-authentication remains available when FERMAX rejects the stored credentials; that form only asks for the password of the saved user.
 
 ### Integration Options
 
@@ -209,6 +219,19 @@ Inspect and redact logs before sharing them. WebRTC debug output may also contai
 ## Contributing
 
 Contributions are welcome! If you have an idea for an improvement or have found a bug, please open an issue or submit a pull request.
+
+### Tests
+
+From the repository root, install the test dependencies in a virtual environment and run:
+
+```shell
+python -m pip install -r requirements_test.txt
+python -m unittest discover -s tests -v
+```
+
+The unit tests cover configuration and credential changes, HTTP requests, OAuth renewal, FCM registration and notification handling, reconnection and shutdown, entity states, snapshot fallback, and WebRTC signalling and cleanup for both backends.
+
+Home Assistant APIs, Google/FERMAX services, sockets, timers and media peers are mocked. The tests do not require a Home Assistant installation, real credentials, go2rtc or aiortc, and do not install optional media packages. They do not replace testing inside Home Assistant or verifying real notifications and image capture with a FERMAX device.
 
 ## License
 

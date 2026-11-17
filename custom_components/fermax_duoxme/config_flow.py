@@ -4,18 +4,20 @@ import logging
 from typing import Any, Dict
 
 import voluptuous as vol
-from aiohttp import ClientResponseError
+from aiohttp import ClientError, ClientResponseError
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
 )
+from homeassistant.helpers.storage import Store
 
 from .const import (
     DOMAIN,
@@ -35,6 +37,8 @@ from .const import (
     CONF_FCM_GCM_SENDER_ID,
     CONF_FCM_GMS_APP_ID,
     CONF_FCM_PROJECT_ID,
+    STORAGE_KEY_TOKEN,
+    STORAGE_VERSION,
 )
 from .api import FermaxApi
 
@@ -144,22 +148,13 @@ class FermaxDuoxmeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: Dict[str, str] = {}
         if user_input is not None:
             data = {**entry.data, CONF_PASSWORD: user_input[CONF_PASSWORD]}
-            api = FermaxApi(async_get_clientsession(self.hass))
-            try:
-                await api.authenticate_with_password(
-                    data[CONF_USERNAME],
-                    data[CONF_PASSWORD],
-                    data[CONF_CLIENT_ID],
-                    data[CONF_CLIENT_SECRET],
-                )
-            except ClientResponseError as e:
-                _LOGGER.error("Re-authentication failed: %s", e)
-                errors["base"] = "invalid_auth"
-            except Exception:
-                _LOGGER.exception("An unknown error occurred during re-authentication.")
-                errors["base"] = "unknown"
-            else:
+            error = await self._async_validate_credentials(data)
+            if error is not None:
+                errors["base"] = error
+            elif await self._async_reset_session(entry):
                 return self.async_update_reload_and_abort(entry, data=data)
+            else:
+                errors["base"] = "cannot_update"
 
         return self.async_show_form(
             step_id="reauth_confirm",
@@ -167,6 +162,93 @@ class FermaxDuoxmeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders={"username": entry.data[CONF_USERNAME]},
         )
+
+    async def async_step_reconfigure(
+        self, user_input: Dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Allow the user to replace the saved FERMAX login."""
+        entry = self._get_reconfigure_entry()
+        errors: Dict[str, str] = {}
+        if user_input is not None:
+            username = user_input[CONF_USERNAME].strip()
+            existing_entry = await self.async_set_unique_id(username.lower())
+            if existing_entry is not None and existing_entry.entry_id != entry.entry_id:
+                return self.async_abort(reason="already_configured")
+
+            data = {
+                **entry.data,
+                CONF_USERNAME: username,
+                CONF_PASSWORD: user_input[CONF_PASSWORD],
+            }
+            error = await self._async_validate_credentials(data)
+            if error is not None:
+                errors["base"] = error
+            elif await self._async_reset_session(entry):
+                title = (
+                    username
+                    if entry.title == entry.data[CONF_USERNAME]
+                    else entry.title
+                )
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data=data,
+                    unique_id=username.lower(),
+                    title=title,
+                    reason="reconfigure_successful",
+                )
+            else:
+                errors["base"] = "cannot_update"
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_USERNAME, default=entry.data[CONF_USERNAME]
+                    ): vol.All(str, vol.Length(min=1)),
+                    vol.Required(CONF_PASSWORD): vol.All(str, vol.Length(min=1)),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def _async_validate_credentials(self, data: Mapping[str, Any]) -> str | None:
+        """Validate replacement credentials before changing the current entry."""
+        api = FermaxApi(async_get_clientsession(self.hass))
+        try:
+            await api.authenticate_with_password(
+                data[CONF_USERNAME],
+                data[CONF_PASSWORD],
+                data[CONF_CLIENT_ID],
+                data[CONF_CLIENT_SECRET],
+            )
+        except ClientResponseError as err:
+            _LOGGER.error("Credential validation failed (HTTP %s).", err.status)
+            return "invalid_auth" if err.status in (400, 401, 403) else "cannot_connect"
+        except (ClientError, TimeoutError) as err:
+            _LOGGER.warning("Could not connect while validating credentials: %s", err)
+            return "cannot_connect"
+        except Exception:
+            _LOGGER.exception("An unknown error occurred during credential validation.")
+            return "unknown"
+        return None
+
+    async def _async_reset_session(self, entry: config_entries.ConfigEntry) -> bool:
+        """Stop the old session before discarding its cached OAuth token."""
+        unloaded = False
+        try:
+            # stop() still needs the old login to unregister its FCM token.
+            if not await self.hass.config_entries.async_unload(entry.entry_id):
+                _LOGGER.error("Could not unload FERMAX before updating credentials.")
+                return False
+            unloaded = True
+            await Store(self.hass, STORAGE_VERSION, STORAGE_KEY_TOKEN).async_remove()
+        except (HomeAssistantError, OSError):
+            _LOGGER.exception("Could not reset the FERMAX session; credentials unchanged.")
+            if unloaded:
+                self.hass.config_entries.async_schedule_reload(entry.entry_id)
+            return False
+        return True
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle an options flow for FERMAX DuoxMe."""
