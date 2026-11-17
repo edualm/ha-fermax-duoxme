@@ -8,7 +8,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, INTEGRATION_NAME
+from .const import (
+    CONF_UNLOCK_DURATION,
+    DEFAULT_UNLOCK_DURATION,
+    DOMAIN,
+    INTEGRATION_NAME,
+)
 from .push import FermaxPushListener
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,6 +65,7 @@ class FermaxDoorLock(LockEntity):
     ):
         """Initialize the lock."""
         self._listener = listener
+        self._entry = entry
         self._api = listener._api
         self._device_id = device_id
         self._access_id = door_info.get("accessId")
@@ -97,8 +103,11 @@ class FermaxDoorLock(LockEntity):
             self._attr_is_locked = False
             self.async_write_ha_state()
             
-            # After 2 seconds, lock it again
-            await asyncio.sleep(2)
+            # Keep the existing 2-second behavior unless the user changes it.
+            unlock_duration = self._entry.options.get(
+                CONF_UNLOCK_DURATION, DEFAULT_UNLOCK_DURATION
+            )
+            await asyncio.sleep(unlock_duration)
             
             self._attr_is_locked = True
             self.async_write_ha_state()

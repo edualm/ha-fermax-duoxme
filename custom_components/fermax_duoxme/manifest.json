@@ -1,18 +1,18 @@
 {
   "domain": "fermax_duoxme",
   "name": "FERMAX DuoxMe",
-  "config_flow": true,
-  "documentation": "https://github.com/edualm/ha-fermax-duoxme",
-  "issue_tracker": "https://github.com/edualm/ha-fermax-duoxme/issues",
+  "after_dependencies": ["go2rtc"],
   "codeowners": ["@edualm"],
-  "iot_class": "push",
-  "version": "3.0.5",
+  "config_flow": true,
   "dependencies": ["http"],
+  "documentation": "https://github.com/edualm/ha-fermax-duoxme",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/edualm/ha-fermax-duoxme/issues",
+  "loggers": ["push_receiver", "socketio", "engineio", "aiortc", "aioice"],
   "requirements": [
-    "aiohttp",
-    "python-socketio",
-    "pillow",
+    "python-socketio>=5.11.0,<6",
     "rustPlusPushReceiver==0.6.1",
     "betterproto==2.0.0b7"
-  ]
+  ],
+  "version": "3.1.0"
 }

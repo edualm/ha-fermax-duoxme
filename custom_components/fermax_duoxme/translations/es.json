@@ -21,6 +21,13 @@
           "fcm_gms_app_id": "ID de Aplicación GMS de FCM",
           "fcm_android_package_name": "Nombre del Paquete Android de FCM"
         }
+      },
+      "reauth_confirm": {
+        "title": "Volver a autenticar FERMAX",
+        "description": "FERMAX ha rechazado las credenciales guardadas de {username}. Introduce la contraseña actual.",
+        "data": {
+          "password": "Contraseña"
+        }
       }
     },
     "error": {
@@ -28,7 +35,8 @@
       "unknown": "Ha ocurrido un error desconocido. Por favor, revisa los registros (logs) para más detalles."
     },
     "abort": {
-      "already_configured": "Esta cuenta de Fermax ya está configurada."
+      "already_configured": "Esta cuenta de Fermax ya está configurada.",
+      "reauth_successful": "La reautenticación se ha completado correctamente."
     }
   },
   "options": {
@@ -36,9 +44,20 @@
       "init": {
         "title": "Opciones de FERMAX DuoxMe",
         "data": {
-          "enable_push_notifications": "Habilitar notificaciones del timbre"
+          "enable_push_notifications": "Habilitar notificaciones del timbre",
+          "enable_live_snapshot": "Capturar imagen en vivo del vídeo de la llamada (WebRTC)",
+          "live_snapshot_backend": "Método de captura de imagen en vivo",
+          "unlock_duration": "Duración de apertura de la puerta (segundos)"
         },
-        "description": "Habilita esta opción para escuchar eventos en tiempo real desde los servidores de FERMAX. Esto proporciona notificaciones instantáneas de llamada con capturas en vivo de tu videoportero. Si se deshabilita, solo estará disponible la entidad de la cerradura."
+        "description": "Habilita esta opción para escuchar eventos en tiempo real desde los servidores de FERMAX. Esto proporciona notificaciones instantáneas de llamada con capturas en vivo de tu videoportero. Si se deshabilita, solo estará disponible la entidad de la cerradura. Si se desactiva la captura en vivo, se usa la última foto guardada por FERMAX (evita instalar aiortc). El método de captura decide quién recibe el vídeo de la llamada: go2rtc (incluido en Home Assistant) o aiortc. Elige una duración de apertura automática de 1 a 30 segundos; las instalaciones existentes mantienen los 2 segundos por defecto."
+      }
+    }
+  },
+  "selector": {
+    "live_snapshot_backend": {
+      "options": {
+        "go2rtc": "go2rtc (incluido en Home Assistant, recomendado)",
+        "aiortc": "aiortc (librería Python, se instala al usarla)"
       }
     }
   }

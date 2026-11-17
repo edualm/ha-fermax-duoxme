@@ -21,6 +21,13 @@
           "fcm_gms_app_id": "ID de l'aplicació GMS de FCM",
           "fcm_android_package_name": "Nom del paquet Android de FCM"
         }
+      },
+      "reauth_confirm": {
+        "title": "Tornar a autenticar FERMAX",
+        "description": "FERMAX ha rebutjat les credencials desades de {username}. Introdueix la contrasenya actual.",
+        "data": {
+          "password": "Contrasenya"
+        }
       }
     },
     "error": {
@@ -28,7 +35,8 @@
       "unknown": "S'ha produït un error desconegut. Si us plau, revisa els registres (logs) per a més detalls."
     },
     "abort": {
-      "already_configured": "Aquest compte de Fermax ja està configurat."
+      "already_configured": "Aquest compte de Fermax ja està configurat.",
+      "reauth_successful": "La reautenticació s'ha completat correctament."
     }
   },
   "options": {
@@ -36,9 +44,20 @@
       "init": {
         "title": "Opcions de FERMAX DuoxMe",
         "data": {
-          "enable_push_notifications": "Habilitar notificacions del timbre"
+          "enable_push_notifications": "Habilitar notificacions del timbre",
+          "enable_live_snapshot": "Capturar imatge en directe del vídeo de la trucada (WebRTC)",
+          "live_snapshot_backend": "Mètode de captura d'imatge en directe",
+          "unlock_duration": "Durada d'obertura de la porta (segons)"
         },
-        "description": "Habilita aquesta opció per escoltar esdeveniments en temps real des dels servidors de FERMAX. Això proporciona notificacions de trucada instantànies amb captures en directe del teu videoporter. Si es deshabilita, només estarà disponible l'entitat del pany."
+        "description": "Habilita aquesta opció per escoltar esdeveniments en temps real des dels servidors de FERMAX. Això proporciona notificacions de trucada instantànies amb captures en directe del teu videoporter. Si es deshabilita, només estarà disponible l'entitat del pany. Si es desactiva la captura en directe, s'utilitza l'última foto desada per FERMAX (evita instal·lar aiortc). El mètode de captura decideix qui rep el vídeo de la trucada: go2rtc (inclòs a Home Assistant) o aiortc. Tria una durada d'obertura automàtica d'1 a 30 segons; les instal·lacions existents mantenen els 2 segons per defecte."
+      }
+    }
+  },
+  "selector": {
+    "live_snapshot_backend": {
+      "options": {
+        "go2rtc": "go2rtc (inclòs a Home Assistant, recomanat)",
+        "aiortc": "aiortc (llibreria Python, s'instal·la en fer-la servir)"
       }
     }
   }

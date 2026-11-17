@@ -2,15 +2,41 @@
 
 This is a custom integration for Home Assistant that connects to the FERMAX DuoxMe video doorbell system. It uses a push-based notification system to provide real-time updates from your doorbell, including incoming calls, and allows you to open your door directly from Home Assistant.
 
-> [!WARNING]
-> Push notifications are not stable, since the integration appears to lose connection with Google's servers. I haven't been able to figure out why yet. Consider using lock-only mode for now (check the [Integration Options](#integration-options) section for how to toggle it).
+> [!NOTE]
+> Notifications and call media depend on FERMAX and Google FCM. The listener now reconnects automatically after errors, but this does not guarantee uninterrupted delivery. Lock-only mode remains available.
 
 ## Features
 
-* **Camera:** A feed that displays a "call" image when someone is ringing and updates to the latest snapshot otherwise.
-* **Ring Sensor:** A binary sensor that turns on when someone is ringing the doorbell.
+* **Camera:** Displays the latest photo retrieved from FERMAX, or an optional live WebRTC snapshot taken during an incoming call.
+* **Ring Sensor:** Turns on immediately when an incoming-call notification arrives, without waiting for image capture, and off when the call is answered or ends.
+* **Call Events:** Home Assistant events for call start, answer, and end, for automation triggers.
+* **Last Call Sensor:** The latest call time, door/device details, and FERMAX photo ID; the image itself remains available on the camera entity.
+* **Push Connection Sensor:** A binary sensor reporting the current FCM socket connection.
 * **Door Lock:** A lock entity that allows you to open your door with a single tap.
 * **Push-Based:** Uses real-time push notifications from FERMAX servers for instant updates, avoiding inefficient polling.
+
+### Capabilities and Reliability
+
+| Area | Behavior |
+| --- | --- |
+| Call automations | New `fermax_duoxme_call` events distinguish call start, answer, and end. |
+| Last-call information | New timestamp sensor with device and photo metadata when available. |
+| Push diagnostics | New connectivity sensor reports the FCM socket connection, separately from the ring sensor. |
+| Unlock state | Configurable 1–30 second unlocked indication; existing installations keep 2 seconds. This does not change the physical door-release pulse. |
+| Image capture | Live snapshot is optional and disabled by default. Choose go2rtc or aiortc; failed live capture falls back to the FERMAX photo API. |
+| Camera access | Uses Home Assistant's camera endpoints. There is no separate unauthenticated custom MJPEG endpoint, and native live video streaming is not advertised. |
+| Push recovery | Reconnects with exponential back-off from 5 seconds to 5 minutes, stops the listener on unload, and correctly unloads platforms when switching to lock-only mode. |
+| Authentication | Refreshes access tokens with a 60-second margin, serializes concurrent refreshes, and supports Home Assistant's re-authentication flow. |
+| Setup failures | Transient connection failures are retried. Rejected credentials and FCM registration errors are surfaced rather than leaving setup waiting indefinitely. |
+| API compatibility | Uses Pairings v4 and FCM registration v2, including Firebase Installation IDs for registration/removal and Android app metadata. |
+| Notification handling | Suppresses recently processed duplicate notifications using a bounded, persisted history of 100 IDs. Unrelated notifications do not clear the ring sensor. |
+| Diagnostics and language | Integration logs avoid full push payloads and pairing data. Option and re-authentication translations are provided in English, Spanish, and Catalan. |
+
+### Image Storage and Video Limitations
+
+The camera stores only its latest successfully retrieved image in memory. A new successful image replaces it; a failed fetch leaves the previous image intact. The image is not saved by this integration to disk and is lost when the camera entity is recreated or Home Assistant restarts. On setup, the integration attempts to retrieve the latest FERMAX photo again.
+
+WebRTC capture receives the call video only long enough to extract one JPEG frame, then disconnects. **There is currently no video recording option, MP4 file, video history, retention policy, or native live-video stream.**
 
 ## Prerequisites
 
@@ -35,8 +61,19 @@ This integration requires two sets of credentials:
 ### Manual Installation
 
 1.  Download the latest release from the [Releases](https://github.com/edualm/ha-fermax-duoxme/releases) page.
-2.  Copy the `fermax_duoxme` directory into your `custom_components` directory in your Home Assistant configuration folder.
+2.  Copy the complete `custom_components/fermax_duoxme` directory into `/config/custom_components/fermax_duoxme/`. Include all Python files, `manifest.json`, and `translations/`; exclude `__pycache__/`.
 3.  Restart Home Assistant.
+
+### Updating an Existing Installation
+
+1. Back up the existing integration files and your Home Assistant configuration.
+2. Update through HACS, or replace the integration's files with a complete, matching copy of the new version. Copying only selected Python files can cause import errors.
+3. Keep the directory name `fermax_duoxme`, matching the manifest domain. Do not run a renamed copy such as `fermax_duoxme2` alongside it.
+4. Restart Home Assistant, then review the integration's options.
+
+The configuration entry version remains `1`, and the existing entity unique IDs are retained. Existing entities and automations can therefore be reused without deleting and re-adding the integration; actual entity IDs depend on your entity registry. The new sensors are added when push notifications are enabled.
+
+Existing credentials continue to be loaded. Older FCM credentials without a Firebase Installation ID are renewed once automatically, which requires access to Google FCM and FERMAX. Do not delete Home Assistant's `.storage` files as part of a routine update.
 
 ## Configuration
 
@@ -74,21 +111,58 @@ After entering all the credentials, the integration will be set up and your enti
 After setting up the integration, you can change its behavior by going to the integration's card on the **Devices & Services** page and clicking **Configure**.
 
 * **Enable Doorbell Notifications**:
-    * **Enabled (Default):** This is the full-featured mode. The integration will listen for real-time events from FERMAX's servers, providing instant ring notifications, live snapshots via the camera, and the door lock.
-    * **Disabled:** This is a "lock-only" mode. The integration will not listen for push notifications. The camera and ring sensor entities will not be created. This is useful if you only want the ability to open the door and prefer a simpler setup without the push notification dependencies.
+    * **Enabled (Default):** This is the full-featured mode. The integration listens for FERMAX notifications, fires call events, and creates the camera, ring, last-call, push-connection, and door-lock entities. Live snapshots require the separate option below.
+    * **Disabled:** This is a "lock-only" mode. The integration will not listen for push notifications. The camera, ring, last-call, and push-connection entities will not be created, and call events will not be emitted. This is useful if you only want the ability to open the door without running a push listener.
+* **Capture live image from the call video (WebRTC)**:
+    * **Enabled:** On an incoming call, the integration joins the call via WebRTC to grab a live frame for the camera entity, using the method below.
+    * **Disabled (Default):** The integration skips WebRTC entirely and uses the latest photo stored by FERMAX. `aiortc` is never installed or imported. Useful if WebRTC capture fails or produces errors on your Home Assistant version.
+* **Live image capture method** (only used when live capture is enabled):
+    * **go2rtc (Default):** The go2rtc server bundled with Home Assistant receives the call video and produces the snapshot. No extra Python packages are installed. It requires go2rtc to be running in Home Assistant (`default_config:` or a `go2rtc:` entry in `configuration.yaml`). A temporary stream uses go2rtc's FFmpeg source to convert the received video to JPEG and is removed after capture.
+    * **aiortc:** An in-process Python WebRTC peer (`aiortc`, installed on first use) receives the video and decodes the first frame.
+    * If the selected method fails, the integration falls back to the latest photo stored by FERMAX.
+* **Door unlock duration:** Choose how long the lock reports as unlocked before returning to locked (1–30 seconds). Existing installations retain the previous 2-second behavior. This is a Home Assistant state timer, not a command to change the physical opening duration or to lock the door again.
 
 ## Usage
 
 Once configured, the integration will create the following entities:
 
-* **`camera.fermax_duoxme_doorbell`**: Displays the video feed. When a call is active, it shows a placeholder image. Otherwise, it shows the last snapshot taken. This camera supports streaming and works with HomeKit.
-* **`binary_sensor.fermax_duoxme_ring`**: Turns `on` when a call is initiated and `off` otherwise.
-* **`lock.fermax_duoxme_door`**: Represents your door lock. To open the door, call the `unlock` service on this entity. It will show as "Unlocked" for 2 seconds and then automatically revert to "Locked".
+The entity IDs below are examples; Home Assistant may use different IDs depending on names and existing registry entries.
+
+* **`camera.fermax_duoxme_doorbell`**: Displays the latest successful still image. It does not expose a native live-video stream or save recordings.
+* **`binary_sensor.fermax_duoxme_ring`**: Turns `on` on `Call` and `off` on `CallAttend` or `CallEnd`. Informational notifications do not change it.
+* **`binary_sensor.fermax_duoxme_push_connection`**: Turns `on` while the FCM socket is connected. This does not prove that FERMAX can deliver a call or that image capture is working.
+* **`sensor.fermax_duoxme_last_call`**: Timestamp of the latest call. Its attributes include `device_id`, `device_name`, and `photo_id` when available. View the actual photo on the camera entity.
+* **Door locks**, for example **`lock.fermax_duoxme_door`**: One entity is created for each visible access door returned by FERMAX. Call `lock.unlock` to open it. Its state returns to "Locked" after the configured interval (2 seconds by default); this is not physical lock feedback. Sending a lock command is not supported.
+
+### Call Events and Last-Call Metadata
+
+The integration fires the `fermax_duoxme_call` event for these FERMAX notifications:
+
+| FERMAX notification | Event `state` | Meaning |
+| --- | --- | --- |
+| `Call` | `started` | An incoming call was received. |
+| `CallAttend` | `attended` | The call was attended, potentially by another participant. |
+| `CallEnd` | `ended` | A call-end notification was received. |
+
+Event data contains `state` and, when supplied, `device_id`. It intentionally omits the private call room, socket URL, and authentication tokens.
+
+The last-call sensor updates immediately on an incoming call and refreshes metadata from the FERMAX call list after 5 seconds. Its attributes can include `device_id`, `device_name`, and `photo_id`. It is not a full call-history database. Older call-list data does not replace a newly received timestamp when it is more than 10 seconds older.
 
 ### Example Automation
 
 ```yaml
 automation:
+  - alias: "Handle a FERMAX call"
+    trigger:
+      - platform: event
+        event_type: fermax_duoxme_call
+        event_data:
+          state: started
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          message: "A FERMAX call has started."
+
   - alias: "Notify when doorbell rings"
     trigger:
       - platform: state
@@ -100,32 +174,37 @@ automation:
           message: "Someone is at the door!"
 ```
 
-### Exporting to HomeKit
+### HomeKit Compatibility
 
-You can easily export the camera to HomeKit and get alerts when someone is at the door.
-
-Here's a sample configuration to get you started:
-
-```yaml
-homekit:
-  - name: "FERMAX Doorbell"
-  id: fermax_doorbell
-  mode: accessory
-  filter:
-      include_entities:
-      - camera.fermax_duoxme_doorbell
-  entity_config:
-      camera.fermax_duoxme_doorbell:
-      linked_doorbell_sensor: binary_sensor.fermax_duoxme_ring
-      support_audio: false
-```
+The integration exposes a still-image camera, not a native video stream. Live HomeKit video and HomeKit recording are not provided. The ring sensor and call events can still be used in Home Assistant automations independently of image capture.
 
 ## Troubleshooting
 
 * **PERMISSION_DENIED Error During Setup**: This error means your FCM API Key is incorrect or lacks the necessary permissions. In your Google Cloud project, ensure the key has the firebaseinstallations.installations.create permission enabled.
 * **No Notifications**: If the integration sets up but you don't receive any updates, double-check all your FCM credentials. Also, check the Home Assistant logs for any errors from the custom_components.fermax_duoxme.push component.
 * **Camera Feed is Blank**: This can happen if the integration fails to fetch the initial image. Try restarting Home Assistant. If the problem persists, check the logs for errors related to the FERMAX API.
-* **Live WebRTC Snapshot is Unavailable**: Live image capture during an incoming call depends on the optional `aiortc` package. The integration attempts to install/use it only when WebRTC capture is needed. If `aiortc` is missing or incompatible with your Home Assistant version, the integration falls back to the latest snapshot from the FERMAX API instead of failing setup.
+* **Live WebRTC Snapshot is Unavailable**: Check that live capture is enabled and review the selected method. go2rtc requires Home Assistant's go2rtc integration; aiortc and Pillow are installed on first use only for the aiortc method. Either method can fail independently of push notifications. The camera then attempts to retrieve the latest FERMAX photo.
+* **Photo API Returns HTTP 404**: That particular photo could not be retrieved at that moment. This alone does not establish whether the image is delayed, unavailable, or removed. Photo refreshes can also occur after call notifications, independently of live capture. A failed refresh does not erase an image already captured successfully.
+* **go2rtc Reports `Incoming unhandled RTP ssrc(1234)`**: This message can appear even when a later log confirms successful frame capture. It is not by itself proof that image capture failed. If you choose to filter it, use a message-specific Home Assistant logger filter instead of disabling all go2rtc errors.
+* **FCM Registration Returns HTTP 400 or 409**: These are reported as setup errors with selected, redacted server details when available, without an endless automatic setup retry loop. Review those details and the FCM configuration before retrying. Do not assume every HTTP 400 means a session limit.
+* **OAuth Returns HTTP 400**: Check the FERMAX login and the OAuth client ID/secret. This is a different request from FCM registration; the HTTP status alone does not identify the cause.
+* **Re-authentication Is Requested**: When setup detects rejected stored credentials, Home Assistant offers a re-authentication form for the FERMAX password. Network failures instead cause setup to retry.
+* **`Invalid handler specified` or Missing Setup Function**: Verify the full integration directory, including `__init__.py`, `config_flow.py`, `const.py`, and `manifest.json`. Ensure its name is `fermax_duoxme`, avoid duplicate renamed installations, and restart Home Assistant.
+
+### Safe Diagnostic Logging
+
+Do not share raw push payloads, OAuth tokens, FCM credentials, call room IDs, or unredacted personal details. Although the integration avoids logging full notification and pairing payloads, the third-party `push_receiver` library can still print sensitive payloads at INFO or DEBUG level.
+
+For integration debugging without those library payloads, merge the following into your existing `logger:` configuration and restart Home Assistant:
+
+```yaml
+logger:
+  logs:
+    custom_components.fermax_duoxme: debug
+    push_receiver: warning
+```
+
+Inspect and redact logs before sharing them. WebRTC debug output may also contain local network and negotiation details.
 
 ## Contributing
 
