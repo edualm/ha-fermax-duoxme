@@ -21,14 +21,33 @@
           "fcm_gms_app_id": "ID de l'aplicació GMS de FCM",
           "fcm_android_package_name": "Nom del paquet Android de FCM"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigurar credencials FERMAX",
+        "description": "Introdueix l'usuari i la contrasenya de FERMAX que vols utilitzar. Es conservaran la configuració OAuth i FCM i les opcions de la integració. Les credencials es validen abans de tornar a carregar la integració.",
+        "data": {
+          "username": "Nom d'usuari (Email)",
+          "password": "Contrasenya"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Tornar a autenticar FERMAX",
+        "description": "FERMAX ha rebutjat les credencials desades de {username}. Introdueix la contrasenya actual.",
+        "data": {
+          "password": "Contrasenya"
+        }
       }
     },
     "error": {
       "invalid_auth": "L'usuari, la contrasenya o les credencials de client no són vàlids. Si us plau, revisa-ho i torna-ho a intentar.",
+      "cannot_connect": "No s'ha pogut connectar amb FERMAX per validar les credencials. Torna-ho a intentar.",
+      "cannot_update": "No s'ha pogut aturar la sessió actual o eliminar-ne el token. Les credencials no s'han canviat. Revisa els registres i torna-ho a intentar.",
       "unknown": "S'ha produït un error desconegut. Si us plau, revisa els registres (logs) per a més detalls."
     },
     "abort": {
-      "already_configured": "Aquest compte de Fermax ja està configurat."
+      "already_configured": "Aquest compte de Fermax ja està configurat.",
+      "reauth_successful": "La reautenticació s'ha completat correctament.",
+      "reconfigure_successful": "Credencials actualitzades. Es tornarà a carregar la integració."
     }
   },
   "options": {
@@ -36,9 +55,20 @@
       "init": {
         "title": "Opcions de FERMAX DuoxMe",
         "data": {
-          "enable_push_notifications": "Habilitar notificacions del timbre"
+          "enable_push_notifications": "Habilitar notificacions del timbre",
+          "enable_live_snapshot": "Captura WebRTC en directe (opcional; es recomana desactivar-la)",
+          "live_snapshot_backend": "Mètode de captura d'imatge en directe",
+          "unlock_duration": "Durada d'obertura de la porta (segons)"
         },
-        "description": "Habilita aquesta opció per escoltar esdeveniments en temps real des dels servidors de FERMAX. Això proporciona notificacions de trucada instantànies amb captures en directe del teu videoporter. Si es deshabilita, només estarà disponible l'entitat del pany."
+        "description": "Recomanat: deixa desactivada la captura WebRTC en directe i utilitza l'última foto desada per FERMAX. No s'entra a la trucada ni s'instal·len paquets multimèdia opcionals; la foto pot pertànyer a una trucada anterior. Activa les notificacions del timbre per rebre esdeveniments de trucada; si les desactives, només queden els panys. Si actives la captura en directe opcional, tria go2rtc o aiortc; si falla, s'utilitza la foto de FERMAX. La durada d'obertura només controla la indicació de desbloqueig a Home Assistant (d'1 a 30 segons, 2 per defecte), no el pols físic d'obertura."
+      }
+    }
+  },
+  "selector": {
+    "live_snapshot_backend": {
+      "options": {
+        "go2rtc": "go2rtc (inclòs a Home Assistant)",
+        "aiortc": "aiortc (llibreria Python, s'instal·la en fer-la servir)"
       }
     }
   }

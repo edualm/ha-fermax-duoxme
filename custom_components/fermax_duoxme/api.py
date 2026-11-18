@@ -72,7 +72,7 @@ class FermaxApi:
             async with self._session.get(API_PAIRINGS_URL, headers=headers) as response:
                 response.raise_for_status()
                 data = await response.json()
-                _LOGGER.debug("Pairings received: %s", data)
+                _LOGGER.debug("Pairings received.")
                 return data
         except Exception as e:
             _LOGGER.error("Failed to get pairings: %s", e)
@@ -109,7 +109,7 @@ class FermaxApi:
             async with self._session.get(API_LIST_URL, headers=headers, params=params) as response:
                 response.raise_for_status()
                 data = await response.json()
-                _LOGGER.debug("Photo list received: %s", data)
+                _LOGGER.debug("Photo list received.")
                 return data
         except Exception as e:
             _LOGGER.error("Failed to get photo list: %s", e)
@@ -136,5 +136,7 @@ class FermaxApi:
                 return await image_response.read()
 
         except Exception as e:
-            _LOGGER.error("Failed to get photo for id %s: %s", e)
+            # FIX (8): photo_id was missing from the arguments, so the log call
+            # itself failed and the real error was lost.
+            _LOGGER.error("Failed to get photo for id %s: %s", photo_id, e)
             return None

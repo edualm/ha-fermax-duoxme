@@ -21,14 +21,33 @@
           "fcm_gms_app_id": "FCM GMS App ID",
           "fcm_android_package_name": "FCM Android Package Name"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure FERMAX credentials",
+        "description": "Enter the FERMAX username and password to use. OAuth and FCM settings and integration options will be kept. The credentials are validated before the integration is reloaded.",
+        "data": {
+          "username": "Username (Email)",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate FERMAX",
+        "description": "FERMAX rejected the saved credentials for {username}. Enter the current password.",
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
       "invalid_auth": "Invalid username, password, or client credentials. Please check and try again.",
+      "cannot_connect": "Could not connect to FERMAX to validate the credentials. Please try again.",
+      "cannot_update": "Could not stop the current session or clear its token. Credentials were not changed. Check the logs and try again.",
       "unknown": "An unknown error occurred. Please check the logs for more details."
     },
     "abort": {
-      "already_configured": "This Fermax account is already configured."
+      "already_configured": "This Fermax account is already configured.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Credentials updated. The integration will reload."
     }
   },
   "options": {
@@ -36,9 +55,20 @@
       "init": {
         "title": "FERMAX DuoxMe Options",
         "data": {
-          "enable_push_notifications": "Enable Doorbell Notifications"
+          "enable_push_notifications": "Enable Doorbell Notifications",
+          "enable_live_snapshot": "Live WebRTC capture (optional; recommended off)",
+          "live_snapshot_backend": "Live image capture method",
+          "unlock_duration": "Door unlock duration (seconds)"
         },
-        "description": "Enable this to listen for real-time events from FERMAX's servers. This provides instant ring notifications with live snapshots from your doorbell. If disabled, only the door lock entity will be available."
+        "description": "Recommended: keep live WebRTC capture disabled and use the latest photo stored by FERMAX. This does not join the call or install optional media packages; the photo may belong to a previous call. Enable doorbell notifications to receive call events; disabling them leaves only the locks. If you enable optional live capture, choose go2rtc or aiortc; failed capture falls back to the FERMAX photo. Unlock duration controls only Home Assistant's unlocked-state indication (1 to 30 seconds, default 2), not the physical door-release pulse."
+      }
+    }
+  },
+  "selector": {
+    "live_snapshot_backend": {
+      "options": {
+        "go2rtc": "go2rtc (bundled with Home Assistant)",
+        "aiortc": "aiortc (Python library, installed on first use)"
       }
     }
   }
