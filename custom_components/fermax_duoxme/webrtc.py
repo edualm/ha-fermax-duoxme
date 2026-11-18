@@ -35,8 +35,8 @@ HANGUP_TIMEOUT = 5
 FRAME_TIMEOUT = 15
 GO2RTC_REQUEST_TIMEOUT = 10
 
-# Key used by Home Assistant's go2rtc integration in hass.data. Its value is a
-# dataclass with `url` and an already authenticated aiohttp `session`.
+# Home Assistant stores either a legacy URL string or an object containing
+# `url` and an already authenticated aiohttp `session`.
 GO2RTC_DATA_KEY = "go2rtc"
 
 # New, more detailed RTP capabilities from the updated script
@@ -360,6 +360,12 @@ def _dtls_parameters_from_answer(answer_sdp: str) -> dict[str, Any]:
 def _go2rtc_connection(hass: HomeAssistant) -> tuple[str, Any] | None:
     """Return (base_url, session) of Home Assistant's go2rtc, if available."""
     config = hass.data.get(GO2RTC_DATA_KEY)
+    if isinstance(config, str):
+        if not config:
+            return None
+        from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+        return config.rstrip("/"), async_get_clientsession(hass)
     url = getattr(config, "url", None)
     session = getattr(config, "session", None)
     if not url or session is None:

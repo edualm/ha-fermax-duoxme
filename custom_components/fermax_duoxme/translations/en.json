@@ -56,18 +56,18 @@
         "title": "FERMAX DuoxMe Options",
         "data": {
           "enable_push_notifications": "Enable Doorbell Notifications",
-          "enable_live_snapshot": "Capture live image from the call video (WebRTC)",
+          "enable_live_snapshot": "Live WebRTC capture (optional; recommended off)",
           "live_snapshot_backend": "Live image capture method",
           "unlock_duration": "Door unlock duration (seconds)"
         },
-        "description": "Enable this to listen for real-time events from FERMAX's servers. This provides instant ring notifications with live snapshots from your doorbell. If disabled, only the door lock entity will be available. If live image capture is disabled, the latest photo stored by FERMAX is used instead (avoids installing aiortc). The capture method picks who receives the call video: go2rtc (built into Home Assistant) or aiortc. Choose an automatic door-lock duration from 1 to 30 seconds; existing setups keep the 2-second default."
+        "description": "Recommended: keep live WebRTC capture disabled and use the latest photo stored by FERMAX. This does not join the call or install optional media packages; the photo may belong to a previous call. Enable doorbell notifications to receive call events; disabling them leaves only the locks. If you enable optional live capture, choose go2rtc or aiortc; failed capture falls back to the FERMAX photo. Unlock duration controls only Home Assistant's unlocked-state indication (1 to 30 seconds, default 2), not the physical door-release pulse."
       }
     }
   },
   "selector": {
     "live_snapshot_backend": {
       "options": {
-        "go2rtc": "go2rtc (bundled with Home Assistant, recommended)",
+        "go2rtc": "go2rtc (bundled with Home Assistant)",
         "aiortc": "aiortc (Python library, installed on first use)"
       }
     }

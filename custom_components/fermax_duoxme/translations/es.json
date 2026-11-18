@@ -56,18 +56,18 @@
         "title": "Opciones de FERMAX DuoxMe",
         "data": {
           "enable_push_notifications": "Habilitar notificaciones del timbre",
-          "enable_live_snapshot": "Capturar imagen en vivo del vídeo de la llamada (WebRTC)",
+          "enable_live_snapshot": "Captura WebRTC en vivo (opcional; se recomienda desactivarla)",
           "live_snapshot_backend": "Método de captura de imagen en vivo",
           "unlock_duration": "Duración de apertura de la puerta (segundos)"
         },
-        "description": "Habilita esta opción para escuchar eventos en tiempo real desde los servidores de FERMAX. Esto proporciona notificaciones instantáneas de llamada con capturas en vivo de tu videoportero. Si se deshabilita, solo estará disponible la entidad de la cerradura. Si se desactiva la captura en vivo, se usa la última foto guardada por FERMAX (evita instalar aiortc). El método de captura decide quién recibe el vídeo de la llamada: go2rtc (incluido en Home Assistant) o aiortc. Elige una duración de apertura automática de 1 a 30 segundos; las instalaciones existentes mantienen los 2 segundos por defecto."
+        "description": "Recomendado: deja desactivada la captura WebRTC en vivo y utiliza la última foto guardada por FERMAX. No se entra en la llamada ni se instalan paquetes multimedia opcionales; la foto puede pertenecer a una llamada anterior. Activa las notificaciones del timbre para recibir eventos de llamada; si las desactivas, solo quedan las cerraduras. Si activas la captura en vivo opcional, elige go2rtc o aiortc; si falla, se utiliza la foto de FERMAX. La duración de apertura solo controla la indicación de desbloqueo en Home Assistant (de 1 a 30 segundos, 2 por defecto), no el pulso físico de apertura."
       }
     }
   },
   "selector": {
     "live_snapshot_backend": {
       "options": {
-        "go2rtc": "go2rtc (incluido en Home Assistant, recomendado)",
+        "go2rtc": "go2rtc (incluido en Home Assistant)",
         "aiortc": "aiortc (librería Python, se instala al usarla)"
       }
     }

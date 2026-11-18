@@ -7,13 +7,15 @@ This is a custom integration for Home Assistant that connects to the FERMAX Duox
 
 ## Features
 
-* **Camera:** Displays the latest photo retrieved from FERMAX, or an optional live WebRTC snapshot taken during an incoming call.
+* **Camera:** Displays the latest photo retrieved from FERMAX (recommended), or an optional live WebRTC snapshot taken during an incoming call.
 * **Ring Sensor:** Turns on immediately when an incoming-call notification arrives, without waiting for image capture, and off when the call is answered or ends.
 * **Call Events:** Home Assistant events for call start, answer, and end, for automation triggers.
 * **Last Call Sensor:** The latest call time, door/device details, and FERMAX photo ID; the image itself remains available on the camera entity.
 * **Push Connection Sensor:** A binary sensor reporting FCM connectivity. Disconnects are reported only after 30 seconds; reconnections before that deadline do not create disconnected states in its history.
 * **Door Lock:** A lock entity that allows you to open your door with a single tap.
 * **Push-Based:** Uses real-time push notifications from FERMAX servers for instant updates, avoiding inefficient polling.
+
+**Recommended configuration:** Keep doorbell notifications enabled and live WebRTC capture **disabled**. The camera will use the latest photo stored by FERMAX without joining the call or requiring go2rtc, aiortc or Pillow for image capture. Call events, sensors and locks still work. The FERMAX photo is not guaranteed to be a new image of the current call; it may belong to a previous call. Live WebRTC capture remains an optional advanced feature, not the recommended operating mode.
 
 ### Capabilities and Reliability
 
@@ -75,6 +77,12 @@ The configuration entry version remains `1`, and the existing entity unique IDs 
 
 Existing credentials continue to be loaded. Older FCM credentials without a Firebase Installation ID are renewed once automatically, which requires access to Google FCM and FERMAX. Do not delete Home Assistant's `.storage` files as part of a routine update.
 
+### Home Assistant Compatibility
+
+The declared minimum remains **Home Assistant 2025.6.0**. Optional go2rtc capture supports both the URL-only connection data used by that version and the newer URL/session object format. The legacy format uses Home Assistant's shared HTTP session; the newer format retains the session supplied by go2rtc, including its authentication.
+
+Unit tests cover capture and cleanup with both formats. This is not end-to-end certification of every Home Assistant/go2rtc version, and go2rtc must still be available when that optional capture method is selected.
+
 ## Configuration
 
 After installation, you must configure the integration through the Home Assistant UI.
@@ -123,11 +131,11 @@ After setting up the integration, you can change its behavior by going to the in
 * **Enable Doorbell Notifications**:
     * **Enabled (Default):** This is the full-featured mode. The integration listens for FERMAX notifications, fires call events, and creates the camera, ring, last-call, push-connection, and door-lock entities. Live snapshots require the separate option below.
     * **Disabled:** This is a "lock-only" mode. The integration will not listen for push notifications. The camera, ring, last-call, and push-connection entities will not be created, and call events will not be emitted. This is useful if you only want the ability to open the door without running a push listener.
-* **Capture live image from the call video (WebRTC)**:
+* **Capture live image from the call video (WebRTC, optional advanced mode)**:
     * **Enabled:** On an incoming call, the integration joins the call via WebRTC to grab a live frame for the camera entity, using the method below.
-    * **Disabled (Default):** The integration skips WebRTC entirely and uses the latest photo stored by FERMAX. `aiortc` is never installed or imported. Useful if WebRTC capture fails or produces errors on your Home Assistant version.
+    * **Disabled (Default, Recommended):** The integration skips WebRTC entirely and uses the latest photo stored by FERMAX. `aiortc` is never installed or imported. This avoids live media negotiation and does not require go2rtc. The photo may belong to a previous call if FERMAX has not provided a newer one.
 * **Live image capture method** (only used when live capture is enabled):
-    * **go2rtc (Default):** The go2rtc server bundled with Home Assistant receives the call video and produces the snapshot. No extra Python packages are installed. It requires go2rtc to be running in Home Assistant (`default_config:` or a `go2rtc:` entry in `configuration.yaml`). A temporary stream uses go2rtc's FFmpeg source to convert the received video to JPEG and is removed after capture.
+    * **go2rtc (Default backend for optional live capture):** The go2rtc server bundled with Home Assistant receives the call video and produces the snapshot. No extra Python packages are installed. It requires go2rtc to be running in Home Assistant (`default_config:` or a `go2rtc:` entry in `configuration.yaml`). A temporary stream uses go2rtc's FFmpeg source to convert the received video to JPEG and is removed after capture.
     * **aiortc:** An in-process Python WebRTC peer (`aiortc`, installed on first use) receives the video and decodes the first frame.
     * If the selected method fails, the integration falls back to the latest photo stored by FERMAX.
 * **Door unlock duration:** Choose how long the lock reports as unlocked before returning to locked (1–30 seconds). Existing installations retain the previous 2-second behavior. This is a Home Assistant state timer, not a command to change the physical opening duration or to lock the door again.

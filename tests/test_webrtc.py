@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, Mock, call, patch
 
 from aiohttp import ClientConnectionError
 
-from tests.helpers import response
+from tests.helpers import IntegrationTestCase, response
 
 
 MODULE_PATH = (
@@ -26,15 +26,21 @@ webrtc = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(webrtc)
 
 
-class Go2rtcFrameTests(unittest.IsolatedAsyncioTestCase):
+class Go2rtcFrameTests(IntegrationTestCase):
     """Exercise stream registration, ingest and cleanup."""
 
-    async def _capture(self, ingest_status=201):
+    async def _capture(self, ingest_status=201, *, legacy=False):
         streams = {}
         requests = []
         session = object()
         hass = SimpleNamespace(
-            data={"go2rtc": SimpleNamespace(url="http://go2rtc", session=session)}
+            data={
+                "go2rtc": (
+                    "http://go2rtc/"
+                    if legacy
+                    else SimpleNamespace(url="http://go2rtc", session=session)
+                )
+            }
         )
         answer = (
             b"v=0\r\na=fingerprint:sha-256 AA:BB\r\na=setup:active\r\n"
@@ -69,6 +75,10 @@ class Go2rtcFrameTests(unittest.IsolatedAsyncioTestCase):
 
         resume = AsyncMock()
         with (
+            patch(
+                "homeassistant.helpers.aiohttp_client.async_get_clientsession",
+                return_value=session,
+            ) as shared_session,
             patch.object(webrtc, "_fermax_call", call),
             patch.object(
                 webrtc, "_consume_video", AsyncMock(return_value=({}, {}))
@@ -80,6 +90,10 @@ class Go2rtcFrameTests(unittest.IsolatedAsyncioTestCase):
             result = await webrtc.async_get_go2rtc_frame(
                 hass, "room", "https://signal.invalid", "auth", "app"
             )
+        if legacy:
+            shared_session.assert_called_once_with(hass)
+        else:
+            shared_session.assert_not_called()
         self.assertEqual(streams, {})
         return result, requests, resume
 
@@ -105,6 +119,26 @@ class Go2rtcFrameTests(unittest.IsolatedAsyncioTestCase):
             [method for method, _, _ in requests], ["PATCH", "POST", "DELETE"]
         )
         self.assertIn("go2rtc rejected the SDP offer: HTTP 500", logs.output[0])
+        resume.assert_not_awaited()
+
+    async def test_ha_2025_6_url_layout_captures_using_shared_session(self):
+        result, requests, resume = await self._capture(legacy=True)
+
+        self.assertEqual(result, b"\xff\xd8frame\xff\xd9")
+        self.assertEqual(
+            [method for method, _, _ in requests], ["PATCH", "POST", "GET", "DELETE"]
+        )
+        self.assertTrue(all(url.startswith("http://go2rtc/api/") for _, url, _ in requests))
+        resume.assert_awaited_once()
+
+    async def test_legacy_layout_also_cleans_up_after_rejected_ingest(self):
+        with self.assertLogs(webrtc.__name__, level="ERROR"):
+            result, requests, resume = await self._capture(ingest_status=500, legacy=True)
+
+        self.assertIsNone(result)
+        self.assertEqual(
+            [method for method, _, _ in requests], ["PATCH", "POST", "DELETE"]
+        )
         resume.assert_not_awaited()
 
 
@@ -325,9 +359,16 @@ class Go2rtcCleanupTests(unittest.IsolatedAsyncioTestCase):
         return await webrtc.async_get_go2rtc_frame(self.hass, "room", "url", "auth", "app")
 
     async def test_unavailable_go2rtc_does_not_start_capture(self):
-        self.hass.data.clear()
-        with self.assertLogs(webrtc.__name__, level="WARNING"):
-            self.assertIsNone(await self.capture())
+        for config in (
+            None,
+            "",
+            SimpleNamespace(url="", session=object()),
+            SimpleNamespace(url="http://go2rtc", session=None),
+        ):
+            with self.subTest(config=config):
+                self.hass.data = {} if config is None else {"go2rtc": config}
+                with self.assertLogs(webrtc.__name__, level="WARNING"):
+                    self.assertIsNone(await self.capture())
         self.request.assert_not_awaited()
 
     async def test_failed_registration_does_not_delete_a_stream_it_did_not_create(self):
