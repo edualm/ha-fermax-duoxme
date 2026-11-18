@@ -33,18 +33,6 @@ class SensorTests(IntegrationTestCase):
             self.assertEqual(sensor._attr_is_on, expected)
         self.assertEqual(sensor.async_write_ha_state.call_count, 4)
 
-    async def test_push_connection_sensor_ignores_duplicate_states(self):
-        self.listener._push_connected.set()
-        sensor = self.attach_entity(
-            self.modules.binary_sensor.FermaxPushConnectionSensor(self.listener, self.entry)
-        )
-        self.assertTrue(sensor._attr_is_on)
-        sensor._handle_connection_changed(True)
-        sensor.async_write_ha_state.assert_not_called()
-        sensor._handle_connection_changed(False)
-        self.assertFalse(sensor._attr_is_on)
-        sensor.async_write_ha_state.assert_called_once()
-
     async def test_new_call_updates_immediately_and_discards_previous_metadata(self):
         self.sensor._attr_extra_state_attributes = {"photo_id": "previous-photo"}
         self.sensor._schedule_refresh = Mock()
@@ -164,6 +152,108 @@ class SensorTests(IntegrationTestCase):
         await self.sensor.async_added_to_hass()
         self.sensor._schedule_refresh.assert_called_once_with(0)
         self.assertEqual(self.sensor.async_on_remove.call_count, 3)
+
+
+class PushConnectionSensorTests(IntegrationTestCase):
+    def setUp(self):
+        super().setUp()
+        self.listener = self.make_listener()
+        self.listener._push_connected.set()
+        self.sensor = self.attach_entity(
+            self.modules.binary_sensor.FermaxPushConnectionSensor(self.listener, self.entry)
+        )
+        self.timer = Mock(spec=asyncio.TimerHandle)
+        self.schedule = self.enterContext(
+            patch.object(self.hass.loop, "call_later", return_value=self.timer)
+        )
+
+    def disconnect(self):
+        self.listener._push_connected.clear()
+        self.sensor._handle_connection_changed(False)
+
+    def reconnect(self):
+        self.listener._push_connected.set()
+        self.sensor._handle_connection_changed(True)
+
+    async def test_short_disconnect_is_not_written_to_home_assistant(self):
+        self.reconnect()
+        self.schedule.assert_not_called()
+        self.disconnect()
+
+        self.assertTrue(self.sensor._attr_is_on)
+        self.sensor.async_write_ha_state.assert_not_called()
+        self.assertEqual(self.schedule.call_args.args[0], 30)
+
+        self.reconnect()
+        self.timer.cancel.assert_called_once()
+        self.assertTrue(self.sensor._attr_is_on)
+        self.sensor.async_write_ha_state.assert_not_called()
+        self.assertIsNone(self.sensor._disconnect_timer)
+
+    async def test_disconnect_is_reported_at_deadline_and_reconnection_is_immediate(self):
+        self.disconnect()
+        self.disconnect()
+        self.schedule.assert_called_once()
+        self.assertEqual(self.schedule.call_args.args[0], 30)
+        callback = self.schedule.call_args.args[1]
+        callback()
+
+        self.assertFalse(self.sensor._attr_is_on)
+        self.sensor.async_write_ha_state.assert_called_once()
+        self.assertIsNone(self.sensor._disconnect_timer)
+        self.disconnect()
+        self.schedule.assert_called_once()
+        self.reconnect()
+        self.assertTrue(self.sensor._attr_is_on)
+        self.assertEqual(self.sensor.async_write_ha_state.call_count, 2)
+
+    async def test_each_outage_gets_its_own_timer_without_extending_an_existing_one(self):
+        next_timer = Mock(spec=asyncio.TimerHandle)
+        self.schedule.side_effect = [self.timer, next_timer]
+        self.disconnect()
+        self.disconnect()
+        self.schedule.assert_called_once()
+        self.reconnect()
+        self.disconnect()
+
+        self.timer.cancel.assert_called_once()
+        self.assertEqual(self.schedule.call_count, 2)
+        self.assertEqual([args.args[0] for args in self.schedule.call_args_list], [30, 30])
+        self.assertIs(self.sensor._disconnect_timer, next_timer)
+        self.sensor.async_write_ha_state.assert_not_called()
+
+    async def test_socket_reconnected_before_dispatch_is_not_marked_disconnected(self):
+        self.disconnect()
+        self.listener._push_connected.set()
+        self.schedule.call_args.args[1]()
+
+        self.assertTrue(self.sensor._attr_is_on)
+        self.sensor.async_write_ha_state.assert_not_called()
+        self.assertIsNone(self.sensor._disconnect_timer)
+
+    async def test_entity_subscription_syncs_socket_state_and_removal_cancels_timer(self):
+        self.listener._push_connected.clear()
+        await self.sensor.async_added_to_hass()
+        self.schedule.assert_called_once()
+        self.sensor.async_on_remove.assert_any_call(self.sensor._cancel_pending_disconnect)
+
+        self.sensor._cancel_pending_disconnect()
+        self.timer.cancel.assert_called_once()
+        self.assertIsNone(self.sensor._disconnect_timer)
+        self.sensor.async_write_ha_state.assert_not_called()
+
+    async def test_initially_disconnected_sensor_and_first_connection_are_immediate(self):
+        self.listener._push_connected.clear()
+        sensor = self.attach_entity(
+            self.modules.binary_sensor.FermaxPushConnectionSensor(self.listener, self.entry)
+        )
+        sensor._handle_connection_changed(False)
+        self.assertFalse(sensor._attr_is_on)
+        self.schedule.assert_not_called()
+        self.listener._push_connected.set()
+        sensor._handle_connection_changed(True)
+        self.assertTrue(sensor._attr_is_on)
+        sensor.async_write_ha_state.assert_called_once()
 
 
 class LockTests(IntegrationTestCase):

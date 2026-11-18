@@ -1,4 +1,5 @@
 """Binary sensor platform for FERMAX DuoxMe."""
+import asyncio
 import logging
 
 from homeassistant.components.binary_sensor import (
@@ -23,6 +24,8 @@ from .const import (
 from .push import FermaxPushListener
 
 _LOGGER = logging.getLogger(__name__)
+
+PUSH_DISCONNECT_DELAY_SECS = 30
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -88,7 +91,7 @@ class FermaxCallSensor(BinarySensorEntity):
 
 
 class FermaxPushConnectionSensor(BinarySensorEntity):
-    """Report whether the FCM socket is connected."""
+    """Report FCM connectivity without recording brief reconnections."""
 
     _attr_has_entity_name = True
     _attr_name = "Push connection"
@@ -97,6 +100,7 @@ class FermaxPushConnectionSensor(BinarySensorEntity):
     def __init__(self, listener: FermaxPushListener, entry: ConfigEntry) -> None:
         """Initialize the connection sensor."""
         self._listener = listener
+        self._disconnect_timer: asyncio.TimerHandle | None = None
         self._attr_is_on = listener.push_connected
         self._attr_unique_id = f"{entry.entry_id}_push_connection"
         self._attr_device_info = {
@@ -114,11 +118,35 @@ class FermaxPushConnectionSensor(BinarySensorEntity):
                 self._handle_connection_changed,
             )
         )
+        self.async_on_remove(self._cancel_pending_disconnect)
+        self._handle_connection_changed(self._listener.push_connected)
 
     @callback
     def _handle_connection_changed(self, connected: bool) -> None:
-        """Update the sensor when the FCM socket connects or disconnects."""
-        if self._attr_is_on == connected:
+        """Report connections immediately, but allow a grace period for outages."""
+        if connected:
+            self._cancel_pending_disconnect()
+            if not self._attr_is_on:
+                self._attr_is_on = True
+                self.async_write_ha_state()
             return
-        self._attr_is_on = connected
+        if self._attr_is_on and self._disconnect_timer is None:
+            self._disconnect_timer = self.hass.loop.call_later(
+                PUSH_DISCONNECT_DELAY_SECS, self._mark_disconnected
+            )
+
+    @callback
+    def _mark_disconnected(self) -> None:
+        """Report an outage only if the socket is still disconnected."""
+        self._disconnect_timer = None
+        if self._listener.push_connected or not self._attr_is_on:
+            return
+        self._attr_is_on = False
         self.async_write_ha_state()
+
+    @callback
+    def _cancel_pending_disconnect(self) -> None:
+        """Cancel delayed state updates on reconnection or entity removal."""
+        if self._disconnect_timer is not None:
+            self._disconnect_timer.cancel()
+            self._disconnect_timer = None

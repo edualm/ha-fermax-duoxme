@@ -11,7 +11,7 @@ This is a custom integration for Home Assistant that connects to the FERMAX Duox
 * **Ring Sensor:** Turns on immediately when an incoming-call notification arrives, without waiting for image capture, and off when the call is answered or ends.
 * **Call Events:** Home Assistant events for call start, answer, and end, for automation triggers.
 * **Last Call Sensor:** The latest call time, door/device details, and FERMAX photo ID; the image itself remains available on the camera entity.
-* **Push Connection Sensor:** A binary sensor reporting the current FCM socket connection.
+* **Push Connection Sensor:** A binary sensor reporting FCM connectivity. Disconnects are reported only after 30 seconds; reconnections before that deadline do not create disconnected states in its history.
 * **Door Lock:** A lock entity that allows you to open your door with a single tap.
 * **Push-Based:** Uses real-time push notifications from FERMAX servers for instant updates, avoiding inefficient polling.
 
@@ -21,7 +21,7 @@ This is a custom integration for Home Assistant that connects to the FERMAX Duox
 | --- | --- |
 | Call automations | New `fermax_duoxme_call` events distinguish call start, answer, and end. |
 | Last-call information | New timestamp sensor with device and photo metadata when available. |
-| Push diagnostics | New connectivity sensor reports the FCM socket connection, separately from the ring sensor. |
+| Push diagnostics | Connectivity sensor ignores disconnects shorter than 30 seconds and reports reconnections immediately. This only filters sensor state/history; socket recovery and diagnostic logs are unchanged. |
 | Unlock state | Configurable 1–30 second unlocked indication; existing installations keep 2 seconds. This does not change the physical door-release pulse. |
 | Image capture | Live snapshot is optional and disabled by default. Choose go2rtc or aiortc; failed live capture falls back to the FERMAX photo API. |
 | Camera access | Uses Home Assistant's camera endpoints. There is no separate unauthenticated custom MJPEG endpoint, and native live video streaming is not advertised. |
